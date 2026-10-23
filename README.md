@@ -43,7 +43,7 @@ Carga: quatro cenários de 500 pedidos, concorrência 20, percentis HTTP e confe
 docker compose --profile tools run --rm -e PROCESSING_INSTANCES=3 -e REPORT_NAME=load-scaled tools bun run test:load
 ```
 
-`PROCESSING_INSTANCES` registra a topologia; não inicia processos. Os [resultados e limites](docs/reviews/008-demonstracao-carga.md) incluem o backlog de saída: capacidade HTTP não equivale a capacidade de publicação.
+`PROCESSING_INSTANCES` registra a topologia; não inicia processos. Os [resultados e limites](docs/PERFORMANCE.md) incluem o backlog de saída: capacidade HTTP não equivale a capacidade de publicação.
 
 ## Contratos e garantias
 
@@ -80,7 +80,7 @@ bun run format:check
 
 `bun run db:down` reverte a última migration; use banco descartável ou backup. Nunca substitua migrations por `schema:update`. O lockfile foi gerado no Linux e o build exige `--frozen-lockfile`.
 
-A [CI](.github/workflows/ci.yml) verifica build, formato, tipos e testes reais em Docker. O workflow foi preparado; sua execução remota depende do próximo push. [Registros de revisão](docs/reviews/007-auditoria-final.md) e [instruções de entrega](docs/DELIVERY.md). Nenhum envio ao recrutador foi feito.
+A [CI](.github/workflows/ci.yml) verifica build, formato, tipos e testes reais em Docker. O workflow executa a cada push ou pull request. Consulte as [execuções no GitHub Actions](https://github.com/LeoGit532/jungle-wagering-processor/actions). A [matriz de requisitos](docs/AUDIT.md) relaciona as garantias aos testes.
 
 ## Mapa visual para ler o código
 

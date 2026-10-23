@@ -70,7 +70,7 @@ Autenticação externa foi adiada conforme permitido pelo enunciado. Development
 
 LocalStack é emulador: filas não persistem entre reinicializações nesta configuração. PostgreSQL usa volume persistente. Eventos da outbox permanecem registrados, inclusive publicados, mas não existe replay operacional automático de eventos já marcados como publicados após perda das filas do emulador. Essa limitação local difere da durabilidade esperada do serviço SQS. Não apagar volumes para recuperar falhas.
 
-O ensaio de carga evidenciou backlog com um publisher e drenagem com três. São execuções locais curtas, sequenciais, com histórico crescente e recursos compartilhados; não estabelecem capacidade de produção nem ganho linear. Detalhes em docs/reviews/008-demonstracao-carga.md. CI preparada, ainda depende de push e execução no GitHub. Rastreabilidade em docs/AUDIT.md.
+O ensaio de carga evidenciou backlog com um publisher e drenagem com três. São execuções locais curtas, sequenciais, com histórico crescente e recursos compartilhados; não estabelecem capacidade de produção nem ganho linear. Detalhes em docs/PERFORMANCE.md. CI configurada para build, formato, tipos e testes a cada push/pull request. Rastreabilidade em docs/AUDIT.md.
 
 ## Guia visual
 

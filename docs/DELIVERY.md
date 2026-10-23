@@ -8,10 +8,10 @@ A captura pede o mesmo e-mail da candidatura, link do repositório e observaçõ
 
 ## Antes de enviar
 
-1. Revisar docs/reviews/007-auditoria-final.md, 008-demonstracao-carga.md e o diff local.
+1. Revisar docs/AUDIT.md, docs/PERFORMANCE.md e o diff local.
 2. Executar a demonstração e ensaiar docs/PRESENTATION.md.
 3. Fazer commit e push manual das alterações finais. Conferir README e relatórios no GitHub.
-4. Aguardar/verificar a CI adicionada nesta etapa; ainda não foi executada remotamente.
+4. Verificar a CI do commit final no GitHub Actions.
 5. Conferir acesso ao repositório; preencher e enviar o formulário com o e-mail da candidatura.
 
 ## Sugestão de observações para revisar

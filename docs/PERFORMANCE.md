@@ -1,10 +1,10 @@
-# Atualização 008 — Demonstração, carga e inicialização limpa
+# Demonstração e análise de carga
 
 ## Demonstração
 
-`docker compose --profile tools run --rm tools bun run demo` passou pelas duplicatas paralelas, conflito de hash, disputa por saldo, referência fora de ordem, entrada SQS, reconciliação e quatro testes de recuperação. Evidência: ../reports/demo-latest.json e .md.
+`docker compose --profile tools run --rm tools bun run demo` passou pelas duplicatas paralelas, conflito de hash, disputa por saldo, referência fora de ordem, entrada SQS, reconciliação e quatro testes de recuperação. Evidência: reports/demo-latest.json e .md.
 
-Foi repetida com banco vazio em projeto Compose isolado, incluindo migrations e criação de filas; veja ../reports/release-check.md. Dados existentes da aplicação foram preservados.
+Foi repetida com banco vazio em projeto Compose isolado, incluindo migrations e criação de filas; veja reports/release-check.md. Dados existentes da aplicação foram preservados.
 
 ## Experimento de carga
 
@@ -32,4 +32,4 @@ A segunda execução acrescentou dois workers à API, sem réplicas HTTP; portan
 
 Próxima investigação: histórico extenso na trigger de soma, limites do pool/broker e publicação em lote mantendo recuperação. Não remover invariantes para elevar um número de throughput.
 
-Relatórios: ../reports/load-latest.json, load-latest.md, load-scaled.json e load-scaled.md. Cada execução sobrescreve somente o nome de relatório escolhido.
+Relatórios: reports/load-latest.json, load-latest.md, load-scaled.json e load-scaled.md. Cada execução sobrescreve somente o nome de relatório escolhido.
