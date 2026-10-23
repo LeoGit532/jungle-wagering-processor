@@ -9,8 +9,9 @@ export interface InboxState {
 export class InboxMessage {
   private constructor(private state: Readonly<InboxState>) {}
   static receive(props: Omit<InboxState, 'processedAt'>): InboxMessage {
-    if (!props.messageId || !props.consumerName || !props.payloadHash)
+    if (!props.messageId || !props.consumerName || !props.payloadHash) {
       throw new DomainError('INVALID_INBOX_MESSAGE');
+    }
     return InboxMessage.rehydrate(props);
   }
   static rehydrate(state: InboxState): InboxMessage {
@@ -26,6 +27,8 @@ export class InboxMessage {
     return this.state.payloadHash === hash;
   }
   markProcessed(at: string): void {
-    if (!this.isProcessed()) this.state = Object.freeze({ ...this.state, processedAt: at });
+    if (!this.isProcessed()) {
+      this.state = Object.freeze({ ...this.state, processedAt: at });
+    }
   }
 }

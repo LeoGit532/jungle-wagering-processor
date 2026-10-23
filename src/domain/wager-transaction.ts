@@ -1,6 +1,12 @@
 import { DomainError, Money } from './money';
 import type { LedgerDirection } from './wallet';
-export type WagerKind = 'BET' | 'WIN' | 'LOSS' | 'REFUND' | 'ROLLBACK';
+const WAGER_KINDS = ['BET', 'WIN', 'LOSS', 'REFUND', 'ROLLBACK'] as const;
+export type WagerKind = (typeof WAGER_KINDS)[number];
+
+export function isWagerKind(value: unknown): value is WagerKind {
+  return WAGER_KINDS.some((kind) => kind === value);
+}
+
 export type WagerStatus = 'PENDING' | 'PENDING_REFERENCE' | 'PROCESSED' | 'REJECTED' | 'FAILED';
 export type FailureCode =
   | 'BALANCE_LIMIT_EXCEEDED'
@@ -37,7 +43,7 @@ export class WagerTransaction {
   static create(
     props: Omit<WagerState, 'status' | 'referenceTransactionId' | 'failureCode' | 'processedAt'>,
   ): WagerTransaction {
-    if (!['BET', 'WIN', 'LOSS', 'REFUND', 'ROLLBACK'].includes(props.kind)) {
+    if (!isWagerKind(props.kind)) {
       throw new DomainError('INVALID_KIND');
     }
     for (const field of [

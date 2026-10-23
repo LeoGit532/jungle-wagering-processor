@@ -1,4 +1,5 @@
 import { WagerTransaction } from '../domain/wager-transaction';
+import type { WalletResponse } from './ports/financial-queries';
 import { parseWager, parseWallet, hashPayload, requireIdentifier } from './contracts';
 import type {
   FinancialResponse,
@@ -28,7 +29,9 @@ export class Wagering {
     key: unknown,
     inbox?: InboxContext,
   ): Promise<FinancialResponse> {
-    if (!this.store.recordFailure) throw new Error('Failure audit adapter unavailable');
+    if (!this.store.recordFailure) {
+      throw new Error('Failure audit adapter unavailable');
+    }
     const idempotencyKey = requireIdentifier(key);
     const data = parseWager(body);
     await this.identity.assertProvider(data.providerId);
@@ -41,7 +44,7 @@ export class Wagering {
     });
     return this.store.recordFailure(transaction, inbox);
   }
-  async openWallet(body: unknown) {
+  async openWallet(body: unknown): Promise<WalletResponse> {
     const { playerId, initialBalance } = parseWallet(body);
     const wallet = await this.store.openWallet(playerId, initialBalance);
     const { id, balance, version } = wallet.snapshot;

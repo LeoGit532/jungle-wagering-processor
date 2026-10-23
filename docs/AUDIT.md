@@ -1,6 +1,6 @@
 # Auditoria do desafio
 
-Revisão final em 22/10/2026 contra o README do repositório junglegaming/backend-challenge. Resultado local Linux: **81 testes, 261 asserções, zero falhas**. Esta matriz liga requisitos às implementações e evidências; não substitui a leitura dos testes.
+Revisão final em 23/10/2026 contra o README do repositório junglegaming/backend-challenge. Resultado local Linux: **88 testes, 274 asserções, zero falhas**. Esta matriz liga requisitos às implementações e evidências; não substitui a leitura dos testes.
 
 | Requisito | Implementação | Evidência |
 |---|---|---|
@@ -16,6 +16,7 @@ Revisão final em 22/10/2026 contra o README do repositório junglegaming/backen
 | Três processos reais e wallets distintas | testes/fixtures e processos Bun | processes.test.ts |
 | Refunds distintos concorrendo pela mesma referência | unicidade por referência/tipo processado | audit.test.ts |
 | Referência entregue antes da original e expiração | worker de referências, estado/tentativas persistidos | messaging.test.ts, demo.ts |
+| Envelope SQS e política compartilhada | application/wager-request.ts, messaging/queue-policy.ts | wager-request.test.ts; messaging.test.ts |
 | Inbox e redelivery, ack após commit | consumer.ts e store | messaging.test.ts, processes.test.ts |
 | Commit financeiro antes de publicação; recuperação | outbox SQL e publisher independente | resilience.test.ts: processo termina antes de publicar |
 | Múltiplos publishers | FOR UPDATE SKIP LOCKED | messaging.test.ts |

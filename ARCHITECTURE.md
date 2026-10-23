@@ -2,7 +2,7 @@
 
 ## Estado e composição
 
-A etapa final foi validada em Linux: 81 testes, 261 asserções, build com lockfile congelado, tipos estritos e formatação. Demonstração completa também executada sobre PostgreSQL vazio em projeto Compose separado.
+A etapa final foi validada em Linux: 88 testes, 274 asserções, build com lockfile congelado, tipos estritos e formatação. Demonstração completa também executada sobre PostgreSQL vazio em projeto Compose separado.
 
 ```mermaid
 flowchart LR

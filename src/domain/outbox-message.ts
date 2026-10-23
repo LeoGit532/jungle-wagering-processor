@@ -20,8 +20,9 @@ export class OutboxMessage {
   private constructor(private state: Readonly<OutboxState>) {}
   static enqueue(event: { toJSON(): EventEnvelope }): OutboxMessage {
     const envelope = event.toJSON();
-    if (!envelope.eventId || !envelope.aggregateId || !envelope.eventType)
+    if (!envelope.eventId || !envelope.aggregateId || !envelope.eventType) {
       throw new DomainError('INVALID_OUTBOX_EVENT');
+    }
     return OutboxMessage.rehydrate({
       id: envelope.eventId,
       aggregateId: envelope.aggregateId,
@@ -60,6 +61,8 @@ export class OutboxMessage {
     });
   }
   private assertPending(): void {
-    if (!this.isPending()) throw new DomainError('OUTBOX_ALREADY_PUBLISHED');
+    if (!this.isPending()) {
+      throw new DomainError('OUTBOX_ALREADY_PUBLISHED');
+    }
   }
 }

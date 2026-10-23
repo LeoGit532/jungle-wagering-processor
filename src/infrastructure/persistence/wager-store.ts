@@ -95,13 +95,16 @@ export class WagerStore implements WageringPort {
       }
       const isNew = await this.insertTransaction(entityManager, transaction);
       let response: FinancialResponse;
-      if (!isNew) response = await this.replayTransaction(entityManager, transaction);
-      else if (failureCode) {
+      if (!isNew) {
+        response = await this.replayTransaction(entityManager, transaction);
+      } else if (failureCode) {
         transaction.fail(failureCode);
         response = this.financialResponse(transaction, this.rehydrateWallet(walletRow));
         await this.saveOutcome(entityManager, transaction, response);
         await this.enqueueOutcomeEvent(entityManager, transaction);
-      } else response = await this.applyTransaction(entityManager, transaction, walletRow);
+      } else {
+        response = await this.applyTransaction(entityManager, transaction, walletRow);
+      }
       if (inbox) {
         await this.completeInbox(entityManager, inbox);
       }
@@ -179,8 +182,9 @@ export class WagerStore implements WageringPort {
       })
       .catch((error: unknown) => {
         const code = (error as { code?: string }).code;
-        if (code && ['40001', '40P01', '55P03'].includes(code))
+        if (code && ['40001', '40P01', '55P03'].includes(code)) {
           metric('wager_lock_conflicts_total');
+        }
         throw error;
       });
   }
@@ -276,7 +280,9 @@ export class WagerStore implements WageringPort {
       [inbox.consumerName, inbox.messageId, inbox.payloadHash, message.snapshot.receivedAt],
     );
     const saved = await this.readInbox(entityManager, inbox);
-    if (!saved.matchesPayload(inbox.payloadHash)) throw new DomainError('INBOX_PAYLOAD_CONFLICT');
+    if (!saved.matchesPayload(inbox.payloadHash)) {
+      throw new DomainError('INBOX_PAYLOAD_CONFLICT');
+    }
   }
 
   private async readInbox(
@@ -289,7 +295,9 @@ export class WagerStore implements WageringPort {
       'select payload_hash,received_at,processed_at from inbox_messages where consumer_name=? and message_id=? for update',
       [inbox.consumerName, inbox.messageId],
     );
-    if (!row) throw new DomainError('INBOX_NOT_FOUND');
+    if (!row) {
+      throw new DomainError('INBOX_NOT_FOUND');
+    }
     return InboxMessage.rehydrate({
       ...inbox,
       payloadHash: row.payload_hash,
@@ -300,7 +308,9 @@ export class WagerStore implements WageringPort {
 
   private async completeInbox(entityManager: EntityManager, inbox: InboxContext): Promise<void> {
     const message = await this.readInbox(entityManager, inbox);
-    if (message.isProcessed()) return;
+    if (message.isProcessed()) {
+      return;
+    }
     message.markProcessed(new Date().toISOString());
     await entityManager.execute(
       'update inbox_messages set processed_at=? where consumer_name=? and message_id=?',

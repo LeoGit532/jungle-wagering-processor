@@ -29,7 +29,9 @@ const TRANSIENT_ERRORS = new Set([
 export class ApiErrorFilter implements ExceptionFilter {
   catch(error: unknown, host: ArgumentsHost): void {
     const { status, code } = classifyError(error);
-    if (status >= 500) log('request_failed', { code });
+    if (status >= 500) {
+      log('request_failed', { code });
+    }
     host.switchToHttp().getResponse<HttpResponse>().status(status).json({
       error: { code },
       correlationId: context.getStore()?.correlationId,
@@ -38,15 +40,20 @@ export class ApiErrorFilter implements ExceptionFilter {
 }
 
 function classifyError(error: unknown): HttpError {
-  if (error instanceof ApplicationError) return { status: error.status, code: error.code };
-  if (error instanceof DomainError)
+  if (error instanceof ApplicationError) {
+    return { status: error.status, code: error.code };
+  }
+  if (error instanceof DomainError) {
     return { status: domainErrorStatus(error.code), code: error.code };
+  }
 
   const databaseCode = underlyingErrorCode(error);
   let response: HttpError = { status: 500, code: 'INTERNAL_ERROR' };
-  if (databaseCode === '23505') response = { status: 409, code: 'RESOURCE_CONFLICT' };
-  else if (databaseCode && TRANSIENT_ERRORS.has(databaseCode))
+  if (databaseCode === '23505') {
+    response = { status: 409, code: 'RESOURCE_CONFLICT' };
+  } else if (databaseCode && TRANSIENT_ERRORS.has(databaseCode)) {
     response = { status: 503, code: 'INFRASTRUCTURE_UNAVAILABLE' };
+  }
 
   const httpError = error as { getStatus?: () => number };
   if (typeof httpError?.getStatus === 'function') {
@@ -57,14 +64,22 @@ function classifyError(error: unknown): HttpError {
 }
 
 function domainErrorStatus(code: string): number {
-  if (code.includes('CONFLICT')) return 409;
-  if (code === 'WALLET_NOT_FOUND') return 404;
-  if (code === 'INVALID_TRANSACTION_STATE') return 500;
+  if (code.includes('CONFLICT')) {
+    return 409;
+  }
+  if (code === 'WALLET_NOT_FOUND') {
+    return 404;
+  }
+  if (code === 'INVALID_TRANSACTION_STATE') {
+    return 500;
+  }
   return 400;
 }
 
 function underlyingErrorCode(error: unknown): string | undefined {
-  if (!error || typeof error !== 'object') return;
+  if (!error || typeof error !== 'object') {
+    return;
+  }
   const exception = error as { code?: string; cause?: unknown };
   return exception.code ?? underlyingErrorCode(exception.cause);
 }

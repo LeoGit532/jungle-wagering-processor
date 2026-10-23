@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Headers, Inject, Param, Post, Query, Res } from '@nestjs/common';
 import { Wagering } from '../../application/wagering';
+import type { WagerStatus } from '../../domain/wager-transaction';
 import { FinancialQueries } from '../../infrastructure/persistence/queries';
 import { metrics } from '../../infrastructure/telemetry';
 import { WAGERING, QUERIES, type HttpResponse } from './tokens';
@@ -86,7 +87,7 @@ export class FinancialController {
   }
 }
 
-function financialStatus(status: string): number {
+function financialStatus(status: WagerStatus): number {
   switch (status) {
     case 'FAILED':
       return 500;

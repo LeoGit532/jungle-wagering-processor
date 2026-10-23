@@ -33,7 +33,7 @@ docker compose --profile tools run --rm tools bun run demo
 docker compose --profile tools run --rm tools bun run test:load
 ```
 
-A suíte Linux aprovou **81 testes, 261 asserções**, incluindo PostgreSQL/SQS reais, três processos Bun, concorrência financeira e falhas abruptas. Os testes criam bancos `wager_test_<uuid>` e filas exclusivas, removendo apenas seus recursos; o usuário de testes precisa de `CREATEDB`. O teste de SIGTERM exige Linux.
+A suíte Linux aprovou **88 testes, 274 asserções**, incluindo PostgreSQL/SQS reais, três processos Bun, concorrência financeira e falhas abruptas. Os testes criam bancos `wager_test_<uuid>` e filas exclusivas, removendo apenas seus recursos; o usuário de testes precisa de `CREATEDB`. O teste de SIGTERM exige Linux.
 
 A demonstração valida duplicatas, conflito de payload, disputa por saldo, referência fora de ordem, entrada SQS, reconciliação e recuperação. Demonstração e carga criam dados identificados na aplicação local e não os apagam. Relatórios são escritos em `docs/reports`.
 
@@ -93,3 +93,7 @@ No PowerShell, dentro da pasta do projeto:
 ```powershell
 Start-Process .\docs\diagrams\arquitetura.html
 ```
+
+## Colaboração
+
+O [guia de contribuição](CONTRIBUTING.md) descreve responsabilidades, contratos e garantias que uma alteração deve preservar. `bun run check` reúne formato, tipos e testes unitários; mudanças financeiras ou de workers também exigem a suíte de integração em Docker. `.editorconfig` mantém o formato consistente entre editores.

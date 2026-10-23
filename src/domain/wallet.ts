@@ -63,8 +63,9 @@ export class Wallet {
     if (after.isNegative()) {
       throw new DomainError('INSUFFICIENT_FUNDS');
     }
-    if (Money.maximum(money.currency).isLessThan(after))
+    if (Money.maximum(money.currency).isLessThan(after)) {
       throw new DomainError('BALANCE_LIMIT_EXCEEDED');
+    }
     // O lançamento registra valor, direção e saldo antes/depois para auditoria.
     const entry = WalletLedgerEntry.create({
       id: entryId,

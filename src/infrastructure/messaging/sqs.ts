@@ -8,6 +8,8 @@ import {
   ChangeMessageVisibilityCommand,
   type Message,
 } from '@aws-sdk/client-sqs';
+import { MAX_DELIVERY_ATTEMPTS, MESSAGE_VISIBILITY_SECONDS } from './queue-policy';
+
 export interface QueueUrls {
   requests: string;
   dlq: string;
@@ -49,8 +51,11 @@ export class SqsGateway {
       )
     ).Attributes!.QueueArn!;
     const requests = await this.createQueue('wager-transactions.fifo', {
-      VisibilityTimeout: '30',
-      RedrivePolicy: JSON.stringify({ deadLetterTargetArn: deadLetterArn, maxReceiveCount: '5' }),
+      VisibilityTimeout: String(MESSAGE_VISIBILITY_SECONDS),
+      RedrivePolicy: JSON.stringify({
+        deadLetterTargetArn: deadLetterArn,
+        maxReceiveCount: String(MAX_DELIVERY_ATTEMPTS),
+      }),
     });
     const events = await this.createQueue('wager-events.fifo');
     return { requests, dlq, events };
@@ -99,7 +104,7 @@ export class SqsGateway {
             MaxNumberOfMessages: 1,
             WaitTimeSeconds: wait,
             MessageSystemAttributeNames: ['ApproximateReceiveCount'],
-            VisibilityTimeout: 30,
+            VisibilityTimeout: MESSAGE_VISIBILITY_SECONDS,
           }),
         )
       ).Messages ?? []

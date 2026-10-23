@@ -1,6 +1,6 @@
 import type { Money, MoneyProps } from '../../domain/money';
 import type { Wallet } from '../../domain/wallet';
-import type { WagerTransaction } from '../../domain/wager-transaction';
+import type { FailureCode, WagerStatus, WagerTransaction } from '../../domain/wager-transaction';
 export interface InboxContext {
   consumerName: string;
   messageId: string;
@@ -8,9 +8,9 @@ export interface InboxContext {
 }
 export interface FinancialResponse {
   transactionId: string;
-  status: string;
+  status: WagerStatus;
   balance: MoneyProps;
-  failureCode?: string;
+  failureCode?: FailureCode;
   idempotentReplay: boolean;
 }
 export interface WageringPort {

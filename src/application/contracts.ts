@@ -1,6 +1,24 @@
 import { createHash } from 'node:crypto';
 import { DomainError, Money } from '../domain/money';
-import type { WagerKind } from '../domain/wager-transaction';
+import { isWagerKind, type WagerKind } from '../domain/wager-transaction';
+
+export interface WalletInput {
+  readonly playerId: string;
+  readonly initialBalance: Money;
+}
+
+export interface WagerInput {
+  readonly providerId: string;
+  readonly externalTransactionId: string;
+  readonly playerId: string;
+  readonly walletId: string;
+  readonly roundId: string;
+  readonly gameId: string;
+  readonly kind: WagerKind;
+  readonly money: Money;
+  readonly referenceExternalTransactionId?: string;
+}
+
 export class ApplicationError extends Error {
   constructor(
     public readonly code: string,
@@ -28,7 +46,7 @@ export function requireUuid(value: unknown): string {
   }
   return id.toLowerCase();
 }
-function assertAllowedFields(value: Record<string, unknown>, allowed: string[]): void {
+function assertAllowedFields(value: Record<string, unknown>, allowed: readonly string[]): void {
   if (Object.keys(value).some((key) => !allowed.includes(key))) {
     throw new ApplicationError('UNKNOWN_FIELD', 400);
   }
@@ -44,7 +62,7 @@ export function parseMoney(value: unknown): Money {
   }
   return Money.from({ amount: props.amount, currency: props.currency });
 }
-export function parseWallet(value: unknown) {
+export function parseWallet(value: unknown): WalletInput {
   const data = requireObject(value);
   assertAllowedFields(data, ['playerId', 'initialBalance']);
   return {
@@ -52,7 +70,7 @@ export function parseWallet(value: unknown) {
     initialBalance: parseMoney(data.initialBalance),
   };
 }
-export function parseWager(value: unknown) {
+export function parseWager(value: unknown): WagerInput {
   const data = requireObject(value);
   assertAllowedFields(data, [
     'providerId',
@@ -69,8 +87,8 @@ export function parseWager(value: unknown) {
   if (providerId.startsWith('__')) {
     throw new ApplicationError('INVALID_PROVIDER', 400);
   }
-  const kind = requireIdentifier(data.kind) as WagerKind;
-  if (!['BET', 'WIN', 'LOSS', 'REFUND', 'ROLLBACK'].includes(kind)) {
+  const kind = requireIdentifier(data.kind);
+  if (!isWagerKind(kind)) {
     throw new DomainError('INVALID_KIND');
   }
   return {

@@ -1,4 +1,13 @@
 import type { MikroORM } from '@mikro-orm/postgresql';
+import type {
+  WalletResponse,
+  LedgerEntryResponse,
+  LedgerPageResponse,
+  TransactionResponse,
+  ReconciliationResponse,
+} from '../../application/ports/financial-queries';
+import type { LedgerDirection } from '../../domain/wallet-ledger-entry';
+import type { WagerKind, WagerStatus } from '../../domain/wager-transaction';
 import { ApplicationError, requireUuid } from '../../application/contracts';
 import { Money } from '../../domain/money';
 import { WalletRow } from './entities';
@@ -8,7 +17,7 @@ interface LedgerRow {
   id: string;
   wallet_id: string;
   transaction_id: string;
-  direction: string;
+  direction: LedgerDirection;
   amount: string;
   currency: string;
   balance_before: string;
@@ -19,14 +28,14 @@ interface TransactionRow {
   id: string;
   state: Record<string, unknown>;
   response: Record<string, unknown>;
-  kind: string;
-  status: string;
+  kind: WagerKind | 'OPENING';
+  status: WagerStatus;
   amount: string;
   currency: string;
 }
 export class FinancialQueries {
   constructor(private readonly orm: MikroORM) {}
-  async wallet(id: string) {
+  async wallet(id: string): Promise<WalletResponse> {
     const walletRow = await this.orm.em.fork().findOne(WalletRow, { id: requireUuid(id) });
     if (!walletRow) {
       throw new ApplicationError('WALLET_NOT_FOUND', 404);
@@ -38,14 +47,14 @@ export class FinancialQueries {
       version: walletRow.version,
     };
   }
-  async transaction(id: string, providerId?: string) {
+  async transaction(id: string, providerId?: string): Promise<TransactionResponse> {
     const condition = providerId ? 'provider_id=? and external_transaction_id=?' : 'id=?';
     const parameters = providerId ? [providerId, id] : [requireUuid(id)];
-    const [transactionRow] = await this.orm.em
-      .fork()
-      .execute<
-        TransactionRow[]
-      >('select id,state,response,kind,status,amount,currency from wager_transactions where ' + condition, parameters);
+    const [transactionRow] = await this.orm.em.fork().execute<TransactionRow[]>(
+      `select id, state, response, kind, status, amount, currency
+        from wager_transactions where ${condition}`,
+      parameters,
+    );
     if (!transactionRow) {
       throw new ApplicationError('TRANSACTION_NOT_FOUND', 404);
     }
@@ -61,7 +70,7 @@ export class FinancialQueries {
       result: transactionRow.response,
     };
   }
-  async ledger(walletId: string, cursor?: string, rawLimit?: string) {
+  async ledger(walletId: string, cursor?: string, rawLimit?: string): Promise<LedgerPageResponse> {
     requireUuid(walletId);
     await this.wallet(walletId);
     const limit = ledgerPageLimit(rawLimit);
@@ -88,7 +97,7 @@ export class FinancialQueries {
           : null,
     };
   }
-  async reconcile(walletId: string) {
+  async reconcile(walletId: string): Promise<ReconciliationResponse> {
     requireUuid(walletId);
     return this.orm.em.fork().transactional(async (entityManager) => {
       const [walletRow] = await entityManager.execute<
@@ -137,7 +146,7 @@ export class FinancialQueries {
     });
   }
 }
-function ledgerEntryResponse(entry: LedgerRow) {
+function ledgerEntryResponse(entry: LedgerRow): LedgerEntryResponse {
   return {
     id: entry.id,
     walletId: entry.wallet_id,

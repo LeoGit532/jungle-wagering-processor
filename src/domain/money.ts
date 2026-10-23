@@ -31,7 +31,9 @@ export class Money {
     // Converte partes da string diretamente: '25.3' -> 25n * 100n + 30n.
     const [whole, fraction = ''] = props.amount.split('.');
     const cents = BigInt(whole!) * 100n + BigInt(fraction.padEnd(2, '0'));
-    if (cents > MAX_MONEY_CENTS) throw new DomainError('AMOUNT_OUT_OF_RANGE');
+    if (cents > MAX_MONEY_CENTS) {
+      throw new DomainError('AMOUNT_OUT_OF_RANGE');
+    }
     return new Money(cents, props.currency);
   }
   static maximum(currency: string): Money {

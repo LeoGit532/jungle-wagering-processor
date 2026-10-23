@@ -15,7 +15,8 @@
     "format": "prettier --write src tests scripts package.json tsconfig.json",
     "format:check": "prettier --check src tests scripts package.json tsconfig.json",
     "test:load": "bun scripts/load.ts",
-    "demo": "bun scripts/demo.ts"
+    "demo": "bun scripts/demo.ts",
+    "check": "bun run format:check && bun run typecheck && bun test tests/unit"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

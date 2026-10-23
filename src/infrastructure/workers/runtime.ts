@@ -20,7 +20,9 @@ export class WorkerRuntime {
       this.loop(() => this.consumeMessages(consumer), 50),
       this.loop(async () => {
         for (let count = 0; count < 25 && !this.stopping; count++) {
-          if (!(await publisher.tick())) break;
+          if (!(await publisher.tick())) {
+            break;
+          }
         }
       }, 250),
       this.loop(async () => {
