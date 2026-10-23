@@ -1,0 +1,21 @@
+name: Verify financial processor
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with frozen Bun lockfile
+        run: docker compose build api
+      - name: Formatting
+        run: docker compose --profile test run --rm tests bun run format:check
+      - name: TypeScript
+        run: docker compose --profile test run --rm tests bun run typecheck
+      - name: Unit, integration, concurrency and crash recovery
+        run: docker compose --profile test run --rm tests
+      - name: Stop ephemeral CI services
+        if: always()
+        run: docker compose down -v

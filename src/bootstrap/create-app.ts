@@ -1,11 +1,11 @@
-import "reflect-metadata";
-import { Module } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
-import type { MikroORM } from "@mikro-orm/postgresql";
-import { instrumentedWagering } from "../infrastructure/instrumented-wagering";
-import { context, log } from "../infrastructure/telemetry";
-import { WagerStore } from "../infrastructure/persistence/wager-store";
-import { FinancialQueries } from "../infrastructure/persistence/queries";
+import 'reflect-metadata';
+import { Module } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import type { MikroORM } from '@mikro-orm/postgresql';
+import { instrumentedWagering } from '../infrastructure/instrumented-wagering';
+import { context, log } from '../infrastructure/telemetry';
+import { WagerStore } from '../infrastructure/persistence/wager-store';
+import { FinancialQueries } from '../infrastructure/persistence/queries';
 import {
   ApiErrorFilter,
   FinancialController,
@@ -13,7 +13,7 @@ import {
   WAGERING,
   QUERIES,
   READY,
-} from "../interfaces/http/api";
+} from '../interfaces/http/api';
 export async function createApplication(
   orm: MikroORM,
   checkBroker: () => Promise<void>,
@@ -30,7 +30,7 @@ export async function createApplication(
       {
         provide: READY,
         useValue: async () => {
-          await Promise.all([orm.em.fork().execute("select 1"), checkBroker()]);
+          await Promise.all([orm.em.fork().execute('select 1'), checkBroker()]);
         },
       },
     ],
@@ -39,9 +39,9 @@ export async function createApplication(
   const app = await NestFactory.create(RuntimeModule, {
     logger: logger
       ? {
-          log: () => log("framework_log"),
-          warn: () => log("framework_warning"),
-          error: () => log("framework_error"),
+          log: () => log('framework_log'),
+          warn: () => log('framework_warning'),
+          error: () => log('framework_error'),
         }
       : false,
   });
@@ -55,12 +55,10 @@ export async function createApplication(
       },
       next: () => void,
     ) => {
-      const raw = req.headers["x-correlation-id"];
+      const raw = req.headers['x-correlation-id'];
       const correlationId =
-        typeof raw === "string" && /^[A-Za-z0-9._:-]{1,200}$/.test(raw)
-          ? raw
-          : crypto.randomUUID();
-      res.setHeader("x-correlation-id", correlationId);
+        typeof raw === 'string' && /^[A-Za-z0-9._:-]{1,200}$/.test(raw) ? raw : crypto.randomUUID();
+      res.setHeader('x-correlation-id', correlationId);
       context.run({ correlationId }, next);
     },
   );

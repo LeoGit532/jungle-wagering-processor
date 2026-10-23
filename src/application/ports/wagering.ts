@@ -1,6 +1,6 @@
-import type { Money, MoneyProps } from "../../domain/money";
-import type { Wallet } from "../../domain/wallet";
-import type { WagerTransaction } from "../../domain/wager-transaction";
+import type { Money, MoneyProps } from '../../domain/money';
+import type { Wallet } from '../../domain/wallet';
+import type { WagerTransaction } from '../../domain/wager-transaction';
 export interface InboxContext {
   consumerName: string;
   messageId: string;
@@ -14,11 +14,9 @@ export interface FinancialResponse {
   idempotentReplay: boolean;
 }
 export interface WageringPort {
+  recordFailure?(transaction: WagerTransaction, inbox?: InboxContext): Promise<FinancialResponse>;
   openWallet(playerId: string, money: Money): Promise<Wallet>;
-  submit(
-    transaction: WagerTransaction,
-    inbox?: InboxContext,
-  ): Promise<FinancialResponse>;
+  submit(transaction: WagerTransaction, inbox?: InboxContext): Promise<FinancialResponse>;
 }
 export interface ProviderIdentityPort {
   assertProvider(providerId: string): Promise<void>;

@@ -1,5 +1,5 @@
-import { DomainError, Money } from "./money";
-export type LedgerDirection = "DEBIT" | "CREDIT";
+import { DomainError, Money } from './money';
+export type LedgerDirection = 'DEBIT' | 'CREDIT';
 export interface LedgerState {
   readonly id: string;
   readonly walletId: string;
@@ -16,14 +16,14 @@ export class WalletLedgerEntry {
   }
   static create(state: LedgerState): WalletLedgerEntry {
     if (!state.money.isPositive()) {
-      throw new DomainError("INVALID_LEDGER_AMOUNT");
+      throw new DomainError('INVALID_LEDGER_AMOUNT');
     }
     if (state.balanceBefore.isNegative() || state.balanceAfter.isNegative()) {
-      throw new DomainError("NEGATIVE_BALANCE");
+      throw new DomainError('NEGATIVE_BALANCE');
     }
     const entry = WalletLedgerEntry.rehydrate(state);
     if (!entry.isBalanced()) {
-      throw new DomainError("UNBALANCED_LEDGER");
+      throw new DomainError('UNBALANCED_LEDGER');
     }
     return entry;
   }
@@ -32,7 +32,7 @@ export class WalletLedgerEntry {
   }
   isBalanced(): boolean {
     const expected =
-      this.state.direction === "DEBIT"
+      this.state.direction === 'DEBIT'
         ? this.state.balanceBefore.subtract(this.state.money)
         : this.state.balanceBefore.add(this.state.money);
     return expected.equals(this.state.balanceAfter);

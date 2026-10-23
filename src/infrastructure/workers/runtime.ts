@@ -1,10 +1,10 @@
-import type { MikroORM } from "@mikro-orm/postgresql";
-import { instrumentedWagering } from "../instrumented-wagering";
-import { WagerStore } from "../persistence/wager-store";
-import { SqsGateway } from "../messaging/sqs";
-import { OutboxPublisher } from "./outbox";
-import { WagerConsumer } from "./consumer";
-import { log } from "../telemetry";
+import type { MikroORM } from '@mikro-orm/postgresql';
+import { instrumentedWagering } from '../instrumented-wagering';
+import { WagerStore } from '../persistence/wager-store';
+import { SqsGateway } from '../messaging/sqs';
+import { OutboxPublisher } from './outbox';
+import { WagerConsumer } from './consumer';
+import { log } from '../telemetry';
 export class WorkerRuntime {
   private stopping = false;
   private tasks: Promise<void>[] = [];
@@ -14,15 +14,14 @@ export class WorkerRuntime {
   ) {}
   start(): void {
     const store = new WagerStore(this.orm);
-    const consumer = new WagerConsumer(
-      this.broker,
-      instrumentedWagering(store),
-    );
+    const consumer = new WagerConsumer(this.broker, instrumentedWagering(store));
     const publisher = new OutboxPublisher(this.orm, this.broker);
     this.tasks = [
       this.loop(() => this.consumeMessages(consumer), 50),
       this.loop(async () => {
-        await publisher.tick();
+        for (let count = 0; count < 25 && !this.stopping; count++) {
+          if (!(await publisher.tick())) break;
+        }
       }, 250),
       this.loop(async () => {
         await store.retryDueReferences();
@@ -41,15 +40,12 @@ export class WorkerRuntime {
     }
   }
 
-  private async loop(
-    tick: () => Promise<unknown>,
-    delay: number,
-  ): Promise<void> {
+  private async loop(tick: () => Promise<unknown>, delay: number): Promise<void> {
     while (!this.stopping) {
       try {
         await tick();
       } catch {
-        log("worker_retry", { code: "INFRASTRUCTURE_UNAVAILABLE" });
+        log('worker_retry', { code: 'INFRASTRUCTURE_UNAVAILABLE' });
       }
       if (!this.stopping) {
         await new Promise((resolve) => setTimeout(resolve, delay));

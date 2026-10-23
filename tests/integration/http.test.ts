@@ -210,3 +210,26 @@ test('foreign-currency operation is an auditable rejection rather than an infras
     ).status,
   ).toBe('REJECTED');
 });
+
+test('financial lock timeout returns 503 and the same request safely succeeds after release', async () => {
+  const wallet = await open();
+  const body = wager(wallet);
+  const key = crypto.randomUUID();
+  const holder = orm.em.fork();
+  await holder.begin();
+  try {
+    await holder.execute('select id from wallets where id=? for update', [wallet.walletId]);
+    const response = await http('/wagering/transactions', body, key);
+    expect(response.status).toBe(503);
+    expect(((await response.json()) as { error: { code: string } }).error.code).toBe(
+      'INFRASTRUCTURE_UNAVAILABLE',
+    );
+  } finally {
+    await holder.rollback();
+  }
+  const recovered = await http('/wagering/transactions', body, key);
+  expect(recovered.status).toBe(200);
+  expect(((await recovered.json()) as { balance: { amount: string } }).balance.amount).toBe(
+    '90.00',
+  );
+}, 15000);

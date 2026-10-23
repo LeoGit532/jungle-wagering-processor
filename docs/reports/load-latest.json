@@ -1,0 +1,121 @@
+{
+  "recordedAt": "2026-10-22T23:02:35.084Z",
+  "environment": {
+    "bun": "1.4.3",
+    "platform": "linux",
+    "arch": "x64",
+    "kernel": "6.6.87.2-microsoft-standard-WSL2",
+    "cpu": "13th Gen Intel(R) Core(TM) i7-13650HX",
+    "logicalCpus": 20,
+    "availableParallelism": 20,
+    "memoryBytes": 8171720704,
+    "api": "http://api:3000",
+    "processingInstances": "1"
+  },
+  "methodology": {
+    "requestsPerScenario": 500,
+    "concurrency": 20,
+    "traffic": "HTTP; four sequential scenarios; closed-loop clients",
+    "warmup": "five readiness requests; wallet setup excluded",
+    "percentiles": "nearest rank, end-to-end HTTP including JSON response",
+    "money": "exact decimal strings and bigint in reconciliation",
+    "metrics": "API instance counters; database-wide outbox backlog",
+    "limitations": [
+      "Local synthetic experiment, not production capacity",
+      "No fixed target RPS",
+      "Other host workloads may affect results",
+      "Expected 422 responses are business rejections, not transport errors"
+    ]
+  },
+  "scenarios": [
+    {
+      "name": "hot-wallet",
+      "requests": 500,
+      "concurrency": 20,
+      "durationSeconds": 2.449491378,
+      "throughput": 204.124008963954,
+      "p50Ms": 96.12290900000016,
+      "p95Ms": 131.368362,
+      "p99Ms": 173.156993,
+      "unexpectedErrors": 0,
+      "errorRate": 0,
+      "businessRejections": 0,
+      "replays": 0,
+      "applied": 500,
+      "statusCodes": {
+        "200": 500
+      },
+      "lockConflicts": 0,
+      "consistent": true
+    },
+    {
+      "name": "ten-wallets",
+      "requests": 500,
+      "concurrency": 20,
+      "durationSeconds": 0.935752947,
+      "throughput": 534.3290679478886,
+      "p50Ms": 36.12317200000007,
+      "p95Ms": 51.10663100000011,
+      "p99Ms": 57.82066999999961,
+      "unexpectedErrors": 0,
+      "errorRate": 0,
+      "businessRejections": 0,
+      "replays": 0,
+      "applied": 500,
+      "statusCodes": {
+        "200": 500
+      },
+      "lockConflicts": 0,
+      "consistent": true
+    },
+    {
+      "name": "idempotent-replay",
+      "requests": 500,
+      "concurrency": 20,
+      "durationSeconds": 1.0182943169999998,
+      "throughput": 491.01717612747916,
+      "p50Ms": 39.37038600000051,
+      "p95Ms": 47.816899999999805,
+      "p99Ms": 48.76325199999974,
+      "unexpectedErrors": 0,
+      "errorRate": 0,
+      "businessRejections": 0,
+      "replays": 499,
+      "applied": 1,
+      "statusCodes": {
+        "200": 500
+      },
+      "lockConflicts": 0,
+      "consistent": true
+    },
+    {
+      "name": "insufficient-balance",
+      "requests": 500,
+      "concurrency": 20,
+      "durationSeconds": 1.405098535,
+      "throughput": 355.8469299806081,
+      "p50Ms": 54.42100500000015,
+      "p95Ms": 68.72487199999978,
+      "p99Ms": 79.36561400000028,
+      "unexpectedErrors": 0,
+      "errorRate": 0,
+      "businessRejections": 499,
+      "replays": 0,
+      "applied": 1,
+      "statusCodes": {
+        "200": 1,
+        "422": 499
+      },
+      "lockConflicts": 0,
+      "consistent": true
+    }
+  ],
+  "outbox": {
+    "peakLagSeconds": 5.521376,
+    "peakPending": 2418,
+    "remainingPending": 1467,
+    "lagAtEndSeconds": 18.337859,
+    "drainObservationSeconds": 15.198,
+    "samplingWindow": "peak values cover offered load; lagAtEndSeconds is after bounded drain"
+  }
+}

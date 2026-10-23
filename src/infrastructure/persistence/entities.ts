@@ -1,4 +1,4 @@
-import { EntitySchema } from "@mikro-orm/core";
+import { EntitySchema } from '@mikro-orm/core';
 export class WalletRow {
   id!: string;
   playerId!: string;
@@ -10,14 +10,14 @@ export class WalletRow {
 }
 export const WalletSchema = new EntitySchema<WalletRow>({
   class: WalletRow,
-  tableName: "wallets",
+  tableName: 'wallets',
   properties: {
-    id: { type: "uuid", primary: true },
-    playerId: { type: "uuid" },
-    currency: { type: "string", length: 3 },
-    balance: { type: "string", columnType: "numeric(30,2)" },
-    version: { type: "integer" },
-    createdAt: { type: "Date" },
-    updatedAt: { type: "Date" },
+    id: { type: 'uuid', primary: true },
+    playerId: { type: 'uuid' },
+    currency: { type: 'string', length: 3 },
+    balance: { type: 'string', columnType: 'numeric(30,2)' },
+    version: { type: 'integer' },
+    createdAt: { type: 'Date' },
+    updatedAt: { type: 'Date' },
   },
 });

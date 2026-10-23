@@ -1,12 +1,12 @@
-import { openDatabase } from "./orm";
+import { openDatabase } from './orm';
 async function main(): Promise<void> {
-  const direction = process.argv[2] ?? "up";
-  if (!["up", "down"].includes(direction)) {
-    throw new Error("Use up or down");
+  const direction = process.argv[2] ?? 'up';
+  if (!['up', 'down'].includes(direction)) {
+    throw new Error('Use up or down');
   }
   const orm = await openDatabase();
   try {
-    if (direction === "down") {
+    if (direction === 'down') {
       await orm.getMigrator().down();
     } else {
       await orm.getMigrator().up();

@@ -1,23 +1,18 @@
-import { WagerTransaction } from "../domain/wager-transaction";
-import {
-  parseWager,
-  parseWallet,
-  hashPayload,
-  requireIdentifier,
-} from "./contracts";
+import { WagerTransaction } from '../domain/wager-transaction';
+import { parseWager, parseWallet, hashPayload, requireIdentifier } from './contracts';
 import type {
   FinancialResponse,
   InboxContext,
   ProcessingObserver,
   ProviderIdentityPort,
   WageringPort,
-} from "./ports/wagering";
+} from './ports/wagering';
 export type {
   FinancialResponse,
   InboxContext,
   ProviderIdentityPort,
   WageringPort,
-} from "./ports/wagering";
+} from './ports/wagering';
 /** Replace with an external IdP adapter when authentication is enabled. */
 export class DevelopmentProviderIdentity implements ProviderIdentityPort {
   async assertProvider(_providerId: string): Promise<void> {}
@@ -28,17 +23,31 @@ export class Wagering {
     private readonly identity: ProviderIdentityPort = new DevelopmentProviderIdentity(),
     private readonly observe: ProcessingObserver = () => {},
   ) {}
+  async recordFailure(
+    body: unknown,
+    key: unknown,
+    inbox?: InboxContext,
+  ): Promise<FinancialResponse> {
+    if (!this.store.recordFailure) throw new Error('Failure audit adapter unavailable');
+    const idempotencyKey = requireIdentifier(key);
+    const data = parseWager(body);
+    await this.identity.assertProvider(data.providerId);
+    const transaction = WagerTransaction.create({
+      ...data,
+      id: crypto.randomUUID(),
+      idempotencyKey,
+      payloadHash: hashPayload({ ...data, money: data.money.toJSON() }),
+      createdAt: new Date().toISOString(),
+    });
+    return this.store.recordFailure(transaction, inbox);
+  }
   async openWallet(body: unknown) {
     const { playerId, initialBalance } = parseWallet(body);
     const wallet = await this.store.openWallet(playerId, initialBalance);
     const { id, balance, version } = wallet.snapshot;
     return { id, playerId, balance: balance.toJSON(), version };
   }
-  async submit(
-    body: unknown,
-    key: unknown,
-    inbox?: InboxContext,
-  ): Promise<FinancialResponse> {
+  async submit(body: unknown, key: unknown, inbox?: InboxContext): Promise<FinancialResponse> {
     const idempotencyKey = requireIdentifier(key);
     const data = parseWager(body);
     await this.identity.assertProvider(data.providerId);

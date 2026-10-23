@@ -1,4 +1,4 @@
-import { AsyncLocalStorage } from "node:async_hooks";
+import { AsyncLocalStorage } from 'node:async_hooks';
 export interface Context {
   correlationId?: string;
   messageId?: string;
@@ -7,7 +7,17 @@ export interface Context {
   providerId?: string;
 }
 export const context = new AsyncLocalStorage<Context>();
-const values = new Map<string, number>();
+const values = new Map<string, number>(
+  [
+    'wager_duplicates_total',
+    'wager_retries_total',
+    'wager_dlq_total',
+    'wager_lock_conflicts_total',
+    'wager_outbox_lag_seconds',
+    'wager_outbox_pending',
+    'wager_reconciliation_mismatches_total',
+  ].map((name) => [name, 0]),
+);
 export function metric(name: string, increment = 1): void {
   values.set(name, (values.get(name) ?? 0) + increment);
 }
@@ -15,7 +25,7 @@ export function gauge(name: string, value: number): void {
   values.set(name, value);
 }
 export function metrics(): string {
-  return [...values].map(([key, value]) => key + " " + value).join("\n") + "\n";
+  return [...values].map(([key, value]) => key + ' ' + value).join('\n') + '\n';
 }
 export function log(
   event: string,
@@ -24,7 +34,7 @@ export function log(
     status?: string;
   } = {},
 ): void {
-  if (process.env.SILENT_LOGS === "1") {
+  if (process.env.SILENT_LOGS === '1') {
     return;
   }
   console.log(

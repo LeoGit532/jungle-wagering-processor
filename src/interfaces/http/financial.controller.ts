@@ -88,6 +88,8 @@ export class FinancialController {
 
 function financialStatus(status: string): number {
   switch (status) {
+    case 'FAILED':
+      return 500;
     case 'REJECTED':
       return 422;
     case 'PENDING':

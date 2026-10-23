@@ -1,13 +1,12 @@
 # Plano e andamento
 
-- Dia 1: estrutura, dominio, PostgreSQL/MikroORM, migrations e constraints - concluido e registrado nas revisoes 001 a 003.
-- Dia 2: API financeira, hash canonico, SQS, inbox/outbox, referencias, concorrencia e execucao em containers - implementado e validado nas revisoes 004 e 005.
-- Dia 3: auditoria contra o README do desafio, revisar limites/modelagem de Inbox/Outbox, falhas e shutdown, documentacao final, execucao do zero e ensaio de apresentacao. Resolver qualquer divergencia encontrada antes da entrega.
+- Dia 1: estrutura, domínio, PostgreSQL/MikroORM e migrations — concluído, revisões 001 a 003.
+- Dia 2: API, SQS, inbox/outbox, referências e concorrência — concluído, revisões 004 e 005.
+- Revisão de legibilidade e responsabilidades — revisão 006.
+- Dia 3: auditoria, endurecimento financeiro, falhas reais, demonstração, carga, inicialização do zero e documentação — concluído localmente, revisões 007 e 008.
 
-Estado: 65 testes aprovados; validacao da suite em container tambem sera registrada ao concluir. Nao houve entrega externa.
+Evidência final Linux: 81 testes, 261 asserções, zero falhas; build com lockfile congelado; tipos estritos e formatação. Dois ensaios de 2.000 pedidos HTTP com saldos reconciliados e sem erros inesperados. Limites de publicação documentados, sem promessa de capacidade de produção.
 
-Meta de envio: 23/10/2026 ate 18h. Prazo conservador estimado: 24/10 as 10h27, assumindo 72h desde o e-mail de 21/10 as 10h27. Confirmar data nos cabecalhos antes de depender desse limite.
+Falta a revisão pessoal: executar a demonstração, ensaiar a apresentação, revisar diff, fazer commit/push manual, conferir execução da CI e acesso ao repositório. Depois preencher e enviar o formulário. Nada foi enviado ao recrutador.
 
-Validacao Linux concluida: docker compose --profile test run --rm tests aprovou os 65 testes; verificacao de tipos pelo mesmo servico aprovada. API, PostgreSQL e LocalStack saudaveis no Compose.
-
-Revisao 006: todo o codigo e testes revisados quanto a nomes, responsabilidades e formatacao. Pendencias funcionais da auditoria do Dia 3 permanecem separadas dessa refatoracao.
+Meta sugerida: 23/10/2026 até 18h. Limite conservador estimado: 24/10 às 10h27, assumindo 72h desde o e-mail de 21/10 às 10h27. Confirmar data nos cabeçalhos antes de depender desse limite.

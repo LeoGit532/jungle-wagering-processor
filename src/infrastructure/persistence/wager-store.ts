@@ -1,26 +1,26 @@
-import { LockMode } from "@mikro-orm/core";
-import type { EntityManager, MikroORM } from "@mikro-orm/postgresql";
+import { InboxMessage } from '../../domain/inbox-message';
+import { OutboxMessage } from '../../domain/outbox-message';
+import { LockMode } from '@mikro-orm/core';
+import type { EntityManager, MikroORM } from '@mikro-orm/postgresql';
 import type {
   FinancialResponse,
   InboxContext,
   WageringPort,
-} from "../../application/ports/wagering";
-import { DomainError, Money, type MoneyProps } from "../../domain/money";
-import { Wallet, WalletLedgerEntry } from "../../domain/wallet";
-import {
-  WagerTransaction,
-  type WagerState,
-} from "../../domain/wager-transaction";
-import { applyWager } from "../../domain/apply-wager";
+} from '../../application/ports/wagering';
+import { DomainError, Money, type MoneyProps } from '../../domain/money';
+import { Wallet, WalletLedgerEntry } from '../../domain/wallet';
+import { WagerTransaction, type WagerState } from '../../domain/wager-transaction';
+import { applyWager } from '../../domain/apply-wager';
 import {
   WalletBalanceChanged,
   WagerTransactionProcessed,
+  WagerTransactionFailed,
   WagerTransactionRejected,
   WagerTransactionPendingReference,
-} from "../../domain/events";
-import { WalletRow } from "./entities";
-import { context, metric, log } from "../telemetry";
-interface StoredWagerState extends Omit<WagerState, "money"> {
+} from '../../domain/events';
+import { WalletRow } from './entities';
+import { context, metric, log } from '../telemetry';
+interface StoredWagerState extends Omit<WagerState, 'money'> {
   money: MoneyProps;
 }
 interface StoredTransaction {
@@ -70,53 +70,55 @@ export class WagerStore implements WageringPort {
     });
     return wallet;
   }
-  async submit(
+  async submit(input: WagerTransaction, inbox?: InboxContext): Promise<FinancialResponse> {
+    return this.persistSubmission(input, inbox);
+  }
+  async recordFailure(input: WagerTransaction, inbox?: InboxContext): Promise<FinancialResponse> {
+    return this.persistSubmission(input, inbox, 'INFRASTRUCTURE_FAILURE');
+  }
+  private async persistSubmission(
     input: WagerTransaction,
     inbox?: InboxContext,
+    failureCode?: 'INFRASTRUCTURE_FAILURE',
   ): Promise<FinancialResponse> {
     const transaction = WagerTransaction.rehydrate(input.snapshot);
-    if (transaction.snapshot.status !== "PENDING") {
-      throw new DomainError("NEW_TRANSACTION_REQUIRED");
+    if (transaction.snapshot.status !== 'PENDING') {
+      throw new DomainError('NEW_TRANSACTION_REQUIRED');
     }
     return this.withTransaction(async (entityManager) => {
-      const walletRow = await this.lockWallet(
-        entityManager,
-        transaction.snapshot.walletId,
-      );
+      const walletRow = await this.lockWallet(entityManager, transaction.snapshot.walletId);
       if (!walletRow) {
-        throw new DomainError("WALLET_NOT_FOUND");
+        throw new DomainError('WALLET_NOT_FOUND');
       }
       if (inbox) {
         await this.receiveInbox(entityManager, inbox);
       }
       const isNew = await this.insertTransaction(entityManager, transaction);
-      const response = isNew
-        ? await this.applyTransaction(entityManager, transaction, walletRow)
-        : await this.replayTransaction(entityManager, transaction);
+      let response: FinancialResponse;
+      if (!isNew) response = await this.replayTransaction(entityManager, transaction);
+      else if (failureCode) {
+        transaction.fail(failureCode);
+        response = this.financialResponse(transaction, this.rehydrateWallet(walletRow));
+        await this.saveOutcome(entityManager, transaction, response);
+        await this.enqueueOutcomeEvent(entityManager, transaction);
+      } else response = await this.applyTransaction(entityManager, transaction, walletRow);
       if (inbox) {
         await this.completeInbox(entityManager, inbox);
       }
       return response;
     });
   }
-  async retryReference(
-    id: string,
-    requestedNow?: Date,
-    maxAttempts = 10,
-  ): Promise<boolean> {
+  async retryReference(id: string, requestedNow?: Date, maxAttempts = 10): Promise<boolean> {
     const [transactionRow] = await this.orm.em.fork().execute<
       {
         wallet_id: string;
       }[]
-    >("select wallet_id from wager_transactions where id=?", [id]);
+    >('select wallet_id from wager_transactions where id=?', [id]);
     if (!transactionRow) {
       return false;
     }
     return this.withTransaction(async (entityManager) => {
-      const walletRow = await this.lockWallet(
-        entityManager,
-        transactionRow.wallet_id,
-      );
+      const walletRow = await this.lockWallet(entityManager, transactionRow.wallet_id);
       if (!walletRow) {
         return false;
       }
@@ -126,23 +128,21 @@ export class WagerStore implements WageringPort {
       }
       const now = requestedNow ?? new Date(pending.database_now);
       if (
-        pending.state.status !== "PENDING_REFERENCE" ||
+        pending.state.status !== 'PENDING_REFERENCE' ||
         new Date(pending.next_reference_at) > now
       ) {
         return false;
       }
       const transaction = this.rehydrateTransaction(pending.state);
       const attempts = pending.reference_attempts + 1;
-      const referenceAge =
-        now.getTime() - new Date(pending.created_at).getTime();
+      const referenceAge = now.getTime() - new Date(pending.created_at).getTime();
       await this.scheduleReferenceRetry(entityManager, id, attempts, now);
       await this.applyTransaction(entityManager, transaction, walletRow, {
-        expireMissingReference:
-          attempts >= maxAttempts || referenceAge >= MAX_REFERENCE_AGE_MS,
+        expireMissingReference: attempts >= maxAttempts || referenceAge >= MAX_REFERENCE_AGE_MS,
         publishPendingEvent: false,
       });
-      metric("wager_reference_retries_total");
-      log("reference_retry", {
+      metric('wager_reference_retries_total');
+      log('reference_retry', {
         transactionId: id,
         walletId: walletRow.id,
         status: transaction.snapshot.status,
@@ -169,31 +169,30 @@ export class WagerStore implements WageringPort {
     }
     return processedCount;
   }
-  private withTransaction<T>(
-    operation: (entityManager: EntityManager) => Promise<T>,
-  ): Promise<T> {
-    return this.orm.em.fork().transactional(async (entityManager) => {
-      await entityManager.execute("SET LOCAL lock_timeout='5s'");
-      await entityManager.execute("SET LOCAL statement_timeout='15s'");
-      return operation(entityManager);
-    });
+  private withTransaction<T>(operation: (entityManager: EntityManager) => Promise<T>): Promise<T> {
+    return this.orm.em
+      .fork()
+      .transactional(async (entityManager) => {
+        await entityManager.execute("SET LOCAL lock_timeout='5s'");
+        await entityManager.execute("SET LOCAL statement_timeout='15s'");
+        return operation(entityManager);
+      })
+      .catch((error: unknown) => {
+        const code = (error as { code?: string }).code;
+        if (code && ['40001', '40P01', '55P03'].includes(code))
+          metric('wager_lock_conflicts_total');
+        throw error;
+      });
   }
-  private lockWallet(
-    entityManager: EntityManager,
-    walletId: string,
-  ): Promise<WalletRow | null> {
+  private lockWallet(entityManager: EntityManager, walletId: string): Promise<WalletRow | null> {
     return entityManager.findOne(
       WalletRow,
       { id: walletId },
       { lockMode: LockMode.PESSIMISTIC_WRITE },
     );
   }
-  private createWalletRow(
-    entityManager: EntityManager,
-    wallet: Wallet,
-  ): WalletRow {
-    const { id, playerId, balance, version, createdAt, updatedAt } =
-      wallet.snapshot;
+  private createWalletRow(entityManager: EntityManager, wallet: Wallet): WalletRow {
+    const { id, playerId, balance, version, createdAt, updatedAt } = wallet.snapshot;
     return entityManager.create(WalletRow, {
       id,
       playerId,
@@ -242,23 +241,23 @@ export class WagerStore implements WageringPort {
        values (?,?,?,?,?,?,?,?,?,?,?)`,
       [
         transactionId,
-        "__internal__",
+        '__internal__',
         transactionId,
-        "opening:" + transactionId,
-        "internal",
+        'opening:' + transactionId,
+        'internal',
         walletId,
-        "OPENING",
-        "PROCESSED",
+        'OPENING',
+        'PROCESSED',
         balance.toString(),
         balance.currency,
-        JSON.stringify({ id: transactionId, kind: "OPENING", walletId }),
+        JSON.stringify({ id: transactionId, kind: 'OPENING', walletId }),
       ],
     );
     const entry = WalletLedgerEntry.create({
       id: crypto.randomUUID(),
       walletId,
       transactionId,
-      direction: "CREDIT",
+      direction: 'CREDIT',
       money: balance,
       balanceBefore: Money.zero(balance.currency),
       balanceAfter: balance,
@@ -270,36 +269,45 @@ export class WagerStore implements WageringPort {
       WalletBalanceChanged.from(entry.state, 1, transactionId),
     );
   }
-  private async receiveInbox(
+  private async receiveInbox(entityManager: EntityManager, inbox: InboxContext): Promise<void> {
+    const message = InboxMessage.receive({ ...inbox, receivedAt: new Date().toISOString() });
+    await entityManager.execute(
+      'insert into inbox_messages(consumer_name,message_id,payload_hash,received_at) values (?,?,?,?) on conflict do nothing',
+      [inbox.consumerName, inbox.messageId, inbox.payloadHash, message.snapshot.receivedAt],
+    );
+    const saved = await this.readInbox(entityManager, inbox);
+    if (!saved.matchesPayload(inbox.payloadHash)) throw new DomainError('INBOX_PAYLOAD_CONFLICT');
+  }
+
+  private async readInbox(
     entityManager: EntityManager,
     inbox: InboxContext,
-  ): Promise<void> {
-    await entityManager.execute(
-      `insert into inbox_messages(consumer_name,message_id,payload_hash)
-       values (?,?,?) on conflict do nothing`,
-      [inbox.consumerName, inbox.messageId, inbox.payloadHash],
-    );
-    const [saved] = await entityManager.execute<
-      {
-        payload_hash: string;
-      }[]
+  ): Promise<InboxMessage> {
+    const [row] = await entityManager.execute<
+      { payload_hash: string; received_at: Date; processed_at: Date | null }[]
     >(
-      "select payload_hash from inbox_messages where consumer_name=? and message_id=? for update",
+      'select payload_hash,received_at,processed_at from inbox_messages where consumer_name=? and message_id=? for update',
       [inbox.consumerName, inbox.messageId],
     );
-    if (saved?.payload_hash !== inbox.payloadHash) {
-      throw new DomainError("INBOX_PAYLOAD_CONFLICT");
-    }
+    if (!row) throw new DomainError('INBOX_NOT_FOUND');
+    return InboxMessage.rehydrate({
+      ...inbox,
+      payloadHash: row.payload_hash,
+      receivedAt: new Date(row.received_at).toISOString(),
+      processedAt: row.processed_at ? new Date(row.processed_at).toISOString() : undefined,
+    });
   }
-  private async completeInbox(
-    entityManager: EntityManager,
-    inbox: InboxContext,
-  ): Promise<void> {
+
+  private async completeInbox(entityManager: EntityManager, inbox: InboxContext): Promise<void> {
+    const message = await this.readInbox(entityManager, inbox);
+    if (message.isProcessed()) return;
+    message.markProcessed(new Date().toISOString());
     await entityManager.execute(
-      "update inbox_messages set processed_at=now() where consumer_name=? and message_id=?",
-      [inbox.consumerName, inbox.messageId],
+      'update inbox_messages set processed_at=? where consumer_name=? and message_id=?',
+      [message.snapshot.processedAt, inbox.consumerName, inbox.messageId],
     );
   }
+
   private async insertTransaction(
     entityManager: EntityManager,
     transaction: WagerTransaction,
@@ -321,7 +329,7 @@ export class WagerStore implements WageringPort {
         state.payloadHash,
         state.walletId,
         state.kind,
-        "PENDING",
+        'PENDING',
         state.money.toString(),
         state.money.currency,
         this.serializeTransaction(transaction),
@@ -346,7 +354,7 @@ export class WagerStore implements WageringPort {
       saved.state.idempotencyKey !== state.idempotencyKey ||
       saved.payload_hash !== state.payloadHash
     ) {
-      throw new DomainError("IDEMPOTENCY_CONFLICT");
+      throw new DomainError('IDEMPOTENCY_CONFLICT');
     }
     return { ...saved.response, idempotentReplay: true };
   }
@@ -358,11 +366,7 @@ export class WagerStore implements WageringPort {
   ): Promise<FinancialResponse> {
     const wallet = this.rehydrateWallet(walletRow);
     const reference = await this.findReference(entityManager, transaction);
-    const alreadyReversed = await this.hasProcessedReversal(
-      entityManager,
-      transaction,
-      reference,
-    );
+    const alreadyReversed = await this.hasProcessedReversal(entityManager, transaction, reference);
     const entry = applyWager({
       transaction,
       wallet,
@@ -371,25 +375,16 @@ export class WagerStore implements WageringPort {
       entryId: crypto.randomUUID(),
       at: new Date().toISOString(),
     });
-    if (
-      transaction.snapshot.status === "PENDING_REFERENCE" &&
-      options.expireMissingReference
-    ) {
-      transaction.reject("REFERENCE_NOT_FOUND");
+    if (transaction.snapshot.status === 'PENDING_REFERENCE' && options.expireMissingReference) {
+      transaction.reject('REFERENCE_NOT_FOUND');
     }
     if (entry) {
-      await this.persistMovement(
-        entityManager,
-        wallet,
-        walletRow,
-        entry,
-        transaction.snapshot.id,
-      );
+      await this.persistMovement(entityManager, wallet, walletRow, entry, transaction.snapshot.id);
     }
     const response = this.financialResponse(transaction, wallet);
     await this.saveOutcome(entityManager, transaction, response);
     if (
-      transaction.snapshot.status !== "PENDING_REFERENCE" ||
+      transaction.snapshot.status !== 'PENDING_REFERENCE' ||
       options.publishPendingEvent !== false
     ) {
       await this.enqueueOutcomeEvent(entityManager, transaction);
@@ -408,11 +403,11 @@ export class WagerStore implements WageringPort {
       {
         state: StoredWagerState;
       }[]
-    >(
-      "select state from wager_transactions where provider_id=? and external_transaction_id=?",
-      [providerId, referenceExternalTransactionId],
-    );
-    if (reference && (reference.state.kind as string) !== "OPENING") {
+    >('select state from wager_transactions where provider_id=? and external_transaction_id=?', [
+      providerId,
+      referenceExternalTransactionId,
+    ]);
+    if (reference && (reference.state.kind as string) !== 'OPENING') {
       return this.rehydrateTransaction(reference.state);
     }
   }
@@ -453,10 +448,7 @@ export class WagerStore implements WageringPort {
       WalletBalanceChanged.from(entry.state, walletRow.version, correlationId),
     );
   }
-  private financialResponse(
-    transaction: WagerTransaction,
-    wallet: Wallet,
-  ): FinancialResponse {
+  private financialResponse(transaction: WagerTransaction, wallet: Wallet): FinancialResponse {
     return {
       transactionId: transaction.snapshot.id,
       status: transaction.snapshot.status,
@@ -471,7 +463,7 @@ export class WagerStore implements WageringPort {
     response: FinancialResponse,
   ): Promise<void> {
     await entityManager.execute(
-      "update wager_transactions set status=?,reference_transaction_id=?,state=?,response=? where id=?",
+      'update wager_transactions set status=?,reference_transaction_id=?,state=?,response=? where id=?',
       [
         transaction.snapshot.status,
         transaction.snapshot.referenceTransactionId ?? null,
@@ -487,25 +479,31 @@ export class WagerStore implements WageringPort {
   ): Promise<void> {
     const state = transaction.snapshot;
     switch (state.status) {
-      case "PROCESSED":
+      case 'PROCESSED':
         await this.enqueueEvent(
           entityManager,
-          WagerTransactionProcessed.from(
-            state,
-            context.getStore()?.correlationId ?? state.id,
-          ),
+          WagerTransactionProcessed.from(state, context.getStore()?.correlationId ?? state.id),
         );
         break;
-      case "REJECTED":
+      case 'FAILED':
         await this.enqueueEvent(
           entityManager,
-          WagerTransactionRejected.from(state, state.id),
+          WagerTransactionFailed.from(state, context.getStore()?.correlationId ?? state.id),
+        );
+        break;
+      case 'REJECTED':
+        await this.enqueueEvent(
+          entityManager,
+          WagerTransactionRejected.from(state, context.getStore()?.correlationId ?? state.id),
         );
         break;
       default:
         await this.enqueueEvent(
           entityManager,
-          WagerTransactionPendingReference.from(state, state.id),
+          WagerTransactionPendingReference.from(
+            state,
+            context.getStore()?.correlationId ?? state.id,
+          ),
         );
     }
   }
@@ -531,22 +529,21 @@ export class WagerStore implements WageringPort {
       ],
     );
   }
-  private async enqueueEvent(
-    entityManager: EntityManager,
-    event: StoredEvent,
-  ): Promise<void> {
-    const envelope = event.toJSON();
+  private async enqueueEvent(entityManager: EntityManager, event: StoredEvent): Promise<void> {
+    const message = OutboxMessage.enqueue(event);
+    const state = message.snapshot;
     await entityManager.execute(
-      "insert into outbox_messages(id,aggregate_id,event_type,payload,occurred_at) values (?,?,?,?,?)",
+      'insert into outbox_messages(id,aggregate_id,event_type,payload,occurred_at) values (?,?,?,?,?)',
       [
-        envelope.eventId,
-        envelope.aggregateId,
-        envelope.eventType,
-        JSON.stringify(envelope),
-        envelope.occurredAt,
+        state.id,
+        state.aggregateId,
+        state.eventType,
+        JSON.stringify(state.payload),
+        state.occurredAt,
       ],
     );
   }
+
   private async findPendingReference(
     entityManager: EntityManager,
     id: string,
@@ -564,12 +561,9 @@ export class WagerStore implements WageringPort {
     attempts: number,
     now: Date,
   ): Promise<void> {
-    const delay = Math.min(
-      MAX_REFERENCE_BACKOFF_MS,
-      1000 * 2 ** Math.min(attempts, 12),
-    );
+    const delay = Math.min(MAX_REFERENCE_BACKOFF_MS, 1000 * 2 ** Math.min(attempts, 12));
     await entityManager.execute(
-      "update wager_transactions set reference_attempts=?,next_reference_at=? where id=?",
+      'update wager_transactions set reference_attempts=?,next_reference_at=? where id=?',
       [attempts, new Date(now.getTime() + delay), id],
     );
   }

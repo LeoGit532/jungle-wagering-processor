@@ -1,0 +1,34 @@
+{
+  "recordedAt": "2026-10-23T14:21:16.653Z",
+  "api": "http://api:3000",
+  "steps": [
+    {
+      "name": "50 parallel submissions produce one debit",
+      "passed": true
+    },
+    {
+      "name": "Different payload with the same key returns 409",
+      "passed": true
+    },
+    {
+      "name": "Two bets of 80 on 100 leave exactly 20",
+      "passed": true
+    },
+    {
+      "name": "Refund arriving before bet is resumed automatically",
+      "passed": true
+    },
+    {
+      "name": "SQS uses the same financial use case as HTTP",
+      "passed": true
+    },
+    {
+      "name": "Every demonstrated wallet reconciles with its ledger",
+      "passed": true
+    },
+    {
+      "name": "Process crashes and graceful shutdown checked by isolated integration tests",
+      "passed": true
+    }
+  ]
+}

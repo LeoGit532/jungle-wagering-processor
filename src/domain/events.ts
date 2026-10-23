@@ -1,5 +1,6 @@
-import type { LedgerState } from "./wallet";
-import type { WagerState } from "./wager-transaction";
+import { immutableCopy } from './immutable';
+import type { LedgerState } from './wallet';
+import type { WagerState } from './wager-transaction';
 interface EventProps<T> {
   eventId: string;
   aggregateId: string;
@@ -11,15 +12,15 @@ interface EventProps<T> {
 export abstract class IntegrationEvent<T> {
   abstract readonly eventType: string;
   readonly version = 1;
-  protected constructor(protected readonly props: EventProps<T>) {}
+  protected constructor(protected readonly props: EventProps<T>) {
+    this.props = immutableCopy(props);
+  }
   toJSON() {
     return { ...this.props, eventType: this.eventType, version: this.version };
   }
 }
-export class WalletBalanceChanged extends IntegrationEvent<
-  Record<string, unknown>
-> {
-  readonly eventType = "WalletBalanceChanged";
+export class WalletBalanceChanged extends IntegrationEvent<Record<string, unknown>> {
+  readonly eventType = 'WalletBalanceChanged';
   static from(entry: LedgerState, version: number, correlationId: string) {
     return new WalletBalanceChanged({
       eventId: crypto.randomUUID(),
@@ -57,22 +58,27 @@ abstract class WagerEvent extends IntegrationEvent<Record<string, unknown>> {
   }
 }
 export class WagerTransactionProcessed extends WagerEvent {
-  readonly eventType = "WagerTransactionProcessed";
+  readonly eventType = 'WagerTransactionProcessed';
   static from(state: WagerState, correlationId: string) {
     return new WagerTransactionProcessed(this.props(state, correlationId));
   }
 }
 export class WagerTransactionRejected extends WagerEvent {
-  readonly eventType = "WagerTransactionRejected";
+  readonly eventType = 'WagerTransactionRejected';
   static from(state: WagerState, correlationId: string) {
     return new WagerTransactionRejected(this.props(state, correlationId));
   }
 }
 export class WagerTransactionPendingReference extends WagerEvent {
-  readonly eventType = "WagerTransactionPendingReference";
+  readonly eventType = 'WagerTransactionPendingReference';
   static from(state: WagerState, correlationId: string) {
-    return new WagerTransactionPendingReference(
-      this.props(state, correlationId),
-    );
+    return new WagerTransactionPendingReference(this.props(state, correlationId));
+  }
+}
+
+export class WagerTransactionFailed extends WagerEvent {
+  readonly eventType = 'WagerTransactionFailed';
+  static from(state: WagerState, correlationId: string) {
+    return new WagerTransactionFailed(this.props(state, correlationId));
   }
 }

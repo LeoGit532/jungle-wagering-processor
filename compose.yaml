@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: challenge
       POSTGRES_DB: wagering
     ports:
-      - '5432:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -20,7 +20,7 @@ services:
       SERVICES: sqs
       AWS_DEFAULT_REGION: us-east-1
     ports:
-      - '4566:4566'
+      - '${SQS_PORT:-4566}:4566'
   migrate:
     pull_policy: never
     image: jungle-wagering:local
@@ -88,6 +88,26 @@ services:
       postgres:
         condition: service_healthy
       localstack:
+        condition: service_healthy
+  tools:
+    image: jungle-wagering:local
+    pull_policy: never
+    profiles: ['tools']
+    command: ['bun', 'run', 'demo']
+    environment:
+      API_BASE_URL: http://api:3000
+      TEST_DATABASE_URL: postgresql://challenge:challenge@postgres:5432/postgres
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      PROCESSING_INSTANCES: '1'
+      SILENT_LOGS: '1'
+    volumes:
+      - ./docs/reports:/app/docs/reports
+      - ./tests:/app/tests:ro
+    depends_on:
+      api:
         condition: service_healthy
 volumes:
   postgres-data:
