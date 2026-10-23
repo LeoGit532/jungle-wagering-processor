@@ -59,7 +59,7 @@ docker compose --profile tools run --rm -e PROCESSING_INSTANCES=3 -e REPORT_NAME
 
 Dinheiro exige string com duas casas, BRL e até 28 dígitos inteiros; playerId/walletId são UUIDs. Saldo nunca negativo; ledger imutável; idempotência persistida; transação SQL única para movimento, inbox e outbox. Entrega de eventos é pelo menos uma vez: assinantes devem deduplicar `eventId` persistentemente.
 
-[API e erros](docs/API.md) · [Arquitetura](ARCHITECTURE.md) · [Matriz de requisitos](docs/AUDIT.md) · [Roteiro de apresentação](docs/PRESENTATION.md).
+[API e erros](docs/API.md) · [Arquitetura](ARCHITECTURE.md) · [Matriz de requisitos](docs/AUDIT.md) · [Análise de carga](docs/PERFORMANCE.md).
 
 Autenticação externa foi adiada conforme permitido pelo desafio. `ProviderIdentityPort` é a extensão para IdP externo; a identidade de desenvolvimento não autentica provedores. Este ambiente não deve ser exposto como serviço de produção.
 
